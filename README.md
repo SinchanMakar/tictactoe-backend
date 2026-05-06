@@ -1,1 +1,1 @@
-# tictactoe-backend
+# tictactoe-game
