@@ -1,1 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIC · TAC · TOE</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --panel: #12122a;
+    --x-color: #ff4d6d;
+    --o-color: #00d4ff;
+    --accent: #ffe94d;
+    --grid-line: #2a2a50;
+    --win-glow: #a3ff00;
+    --text: #e8e8ff;
+    --muted: #5a5a8a;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 60%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 65% 45%, rgba(0,212,255,0.2) 0%, transparent 100%),
+      radial-gradient(2px 2px at 25% 55%, rgba(255,77,109,0.15) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
+  }
+
+  .title {
+    font-family: 'Boogaloo', cursive;
+    font-size: 3rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(255,233,77,0.8), 0 0 30px rgba(255,233,77,0.4);
+    animation: titlePulse 3s ease-in-out infinite;
+  }
+
+  @keyframes titlePulse {
+    0%, 100% { text-shadow: 0 0 10px rgba(255,233,77,0.8), 0 0 30px rgba(255,233,77,0.4); }
+    50% { text-shadow: 0 0 20px rgba(255,233,77,1), 0 0 50px rgba(255,233,77,0.6); }
+  }
+
+  .scoreboard { display: flex; gap: 12px; width: 100%; }
+
+  .score-card {
+    flex: 1;
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 12px 8px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .score-card.x-card { border-color: var(--x-color); box-shadow: 0 0 15px rgba(255,77,109,0.2); }
+  .score-card.o-card { border-color: var(--o-color); box-shadow: 0 0 15px rgba(0,212,255,0.2); }
+  .score-card.draw-card { border-color: var(--muted); }
+  .score-card.active-card { transform: translateY(-4px); }
+  .score-card.x-card.active-card { box-shadow: 0 0 25px rgba(255,77,109,0.5), 0 8px 20px rgba(0,0,0,0.4); }
+  .score-card.o-card.active-card { box-shadow: 0 0 25px rgba(0,212,255,0.5), 0 8px 20px rgba(0,0,0,0.4); }
+
+  .score-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .score-symbol { font-family: 'Boogaloo', cursive; font-size: 1.5rem; }
+  .x-card .score-symbol { color: var(--x-color); }
+  .o-card .score-symbol { color: var(--o-color); }
+  .draw-card .score-symbol { color: var(--muted); }
+  .score-value { font-family: 'Boogaloo', cursive; font-size: 2rem; line-height: 1; }
+  .x-card .score-value { color: var(--x-color); }
+  .o-card .score-value { color: var(--o-color); }
+  .draw-card .score-value { color: var(--muted); }
+
+  .difficulty {
+    display: flex; gap: 8px;
+    background: var(--panel);
+    border-radius: 50px; padding: 5px;
+    border: 1px solid var(--grid-line);
+  }
+
+  .diff-btn {
+    background: none; border: none;
+    color: var(--muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700; font-size: 0.75rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 50px;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+
+  .diff-btn.active {
+    background: linear-gradient(135deg, #1e1e45, #252550);
+    color: var(--accent);
+    box-shadow: 0 0 12px rgba(255,233,77,0.3);
+  }
+
+  .status {
+    font-size: 1.1rem; font-weight: 900;
+    letter-spacing: 0.05em; text-align: center;
+    min-height: 1.5em; transition: all 0.3s ease;
+  }
+
+  .status.x-turn { color: var(--x-color); }
+  .status.o-turn { color: var(--o-color); }
+  .status.win { color: var(--win-glow); animation: winPulse 0.5s ease; }
+  .status.draw { color: var(--accent); }
+
+  @keyframes winPulse {
+    0% { transform: scale(0.8); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .board-wrapper { position: relative; width: 100%; max-width: 340px; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: var(--panel);
+    border-radius: 20px; overflow: hidden;
+    border: 2px solid var(--grid-line);
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background: transparent; border: none;
+    transition: background 0.15s ease;
+  }
+
+  .cell:nth-child(1),.cell:nth-child(2),.cell:nth-child(3) { border-bottom: 2px solid var(--grid-line); }
+  .cell:nth-child(4),.cell:nth-child(5),.cell:nth-child(6) { border-bottom: 2px solid var(--grid-line); }
+  .cell:nth-child(1),.cell:nth-child(4),.cell:nth-child(7) { border-right: 2px solid var(--grid-line); }
+  .cell:nth-child(2),.cell:nth-child(5),.cell:nth-child(8) { border-right: 2px solid var(--grid-line); }
+
+  .cell:hover:not(.taken) { background: rgba(255,255,255,0.04); }
+  .cell.taken { cursor: default; }
+
+  .cell-inner {
+    width: 65%; height: 65%;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; transition: all 0.2s ease;
+  }
+
+  .cell svg { width: 70%; height: 70%; }
+
+  .cell.x .cell-inner { animation: popIn 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .cell.x svg line {
+    stroke: var(--x-color); stroke-width: 8; stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgba(255,77,109,0.8));
+    stroke-dasharray: 100; animation: drawLine 0.2s ease forwards;
+  }
+
+  .cell.o .cell-inner { animation: popIn 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .cell.o svg circle {
+    stroke: var(--o-color); stroke-width: 7; fill: none;
+    filter: drop-shadow(0 0 6px rgba(0,212,255,0.8));
+    stroke-dasharray: 283; stroke-dashoffset: 283;
+    animation: drawCircle 0.25s ease forwards;
+  }
+
+  @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  @keyframes drawCircle { to { stroke-dashoffset: 0; } }
+
+  .cell.winner { background: rgba(163,255,0,0.08); }
+
+  .thinking-overlay {
+    position: absolute; inset: 0;
+    background: rgba(13,13,26,0.6);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+
+  .thinking-overlay.active { opacity: 1; pointer-events: all; }
+
+  .thinking-dots { display: flex; gap: 8px; }
+  .thinking-dots span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--o-color);
+    animation: dot-bounce 1.2s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(0,212,255,0.6);
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dot-bounce {
+    0%,100% { transform: translateY(0); opacity: 0.5; }
+    50% { transform: translateY(-10px); opacity: 1; }
+  }
+
+  .btn-row { display: flex; gap: 12px; width: 100%; }
+
+  .btn {
+    flex: 1; padding: 14px; border: none; border-radius: 14px;
+    font-family: 'Nunito', sans-serif; font-weight: 900;
+    font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--x-color), #c73652);
+    color: white; box-shadow: 0 4px 15px rgba(255,77,109,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,77,109,0.5); }
+
+  .btn-secondary {
+    background: var(--panel); color: var(--muted);
+    border: 2px solid var(--grid-line);
+  }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); transform: translateY(-2px); }
+  .btn:active { transform: translateY(1px); }
+
+  .connection {
+    font-size: 0.7rem; color: var(--muted);
+    display: flex; align-items: center; gap: 5px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: all 0.3s; }
+  .conn-dot.online { background: #a3ff00; box-shadow: 0 0 6px rgba(163,255,0,0.7); }
+  .conn-dot.offline { background: var(--x-color); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title">Tic · Tac · Toe</div>
+
+  <div class="scoreboard">
+    <div class="score-card x-card" id="xCard">
+      <div class="score-label">You</div>
+      <div class="score-symbol">✕</div>
+      <div class="score-value" id="xScore">0</div>
+    </div>
+    <div class="score-card draw-card">
+      <div class="score-label">Draw</div>
+      <div class="score-symbol">—</div>
+      <div class="score-value" id="drawScore">0</div>
+    </div>
+    <div class="score-card o-card" id="oCard">
+      <div class="score-label">AI</div>
+      <div class="score-symbol">◯</div>
+      <div class="score-value" id="oScore">0</div>
+    </div>
+  </div>
+
+  <div class="difficulty">
+    <button class="diff-btn" onclick="setDifficulty('easy')">Easy</button>
+    <button class="diff-btn active" onclick="setDifficulty('medium')">Medium</button>
+    <button class="diff-btn" onclick="setDifficulty('hard')">Hard</button>
+  </div>
+
+  <div class="status x-turn" id="status">Your turn — play X</div>
+
+  <div class="board-wrapper">
+    <div class="board" id="board"></div>
+    <div class="thinking-overlay" id="thinking">
+      <div class="thinking-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="resetGame()">New Game</button>
+    <button class="btn btn-secondary" onclick="resetScores()">Reset Scores</button>
+  </div>
+
+  <div class="connection">
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connText">Connecting…</span>
+  </div>
+</div>
+
+<script>
+  const API = 'https://tictactoe-backend-2-d77c.onrender.com';
+
+  let board = Array(9).fill('');
+  let gameOver = false;
+  let thinking = false;
+  let difficulty = 'medium';
+  let scores = { X: 0, O: 0, draw: 0 };
+  let connected = false;
+
+  const boardEl = document.getElementById('board');
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+    cell.innerHTML = `<div class="cell-inner"></div>`;
+    cell.addEventListener('click', () => handleClick(i));
+    boardEl.appendChild(cell);
+  }
+
+  async function checkConnection() {
+    try {
+      const res = await fetch(`${API}/health`);
+      if (res.ok) {
+        connected = true;
+        document.getElementById('connDot').className = 'conn-dot online';
+        document.getElementById('connText').textContent = 'Flask backend connected';
+      }
+    } catch {
+      connected = false;
+      document.getElementById('connDot').className = 'conn-dot offline';
+      document.getElementById('connText').textContent = 'Backend offline';
+    }
+  }
+
+  checkConnection();
+
+  function setDifficulty(d) {
+    difficulty = d;
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    resetGame();
+  }
+
+  function setStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = `status ${cls}`;
+  }
+
+  function renderBoard(winLine = []) {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach((cell, i) => {
+      const val = board[i];
+      cell.className = 'cell' + (val ? ' taken' : '') + (val ? ` ${val.toLowerCase()}` : '');
+      if (winLine.includes(i)) cell.classList.add('winner');
+      const inner = cell.querySelector('.cell-inner');
+      inner.innerHTML = '';
+      if (val === 'X') {
+        inner.innerHTML = `<svg viewBox="0 0 100 100"><line x1="20" y1="20" x2="80" y2="80"/><line x1="80" y1="20" x2="20" y2="80"/></svg>`;
+      } else if (val === 'O') {
+        inner.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg>`;
+      }
+    });
+  }
+
+  function updateTurnIndicator() {
+    document.getElementById('xCard').classList.remove('active-card');
+    document.getElementById('oCard').classList.remove('active-card');
+    if (!gameOver) document.getElementById('xCard').classList.add('active-card');
+  }
+
+  async function handleClick(i) {
+    if (gameOver || thinking || board[i] !== '' || !connected) return;
+
+    board[i] = 'X';
+    renderBoard();
+    setStatus('AI is thinking…', 'o-turn');
+    document.getElementById('oCard').classList.add('active-card');
+    document.getElementById('xCard').classList.remove('active-card');
+
+    const [win, winLine] = checkLocalWinner(board);
+    if (win) {
+      renderBoard(winLine);
+      scores.X++;
+      document.getElementById('xScore').textContent = scores.X;
+      setStatus('🎉 You win!', 'win');
+      gameOver = true;
+      return;
+    }
+    if (board.every(c => c !== '')) {
+      scores.draw++;
+      document.getElementById('drawScore').textContent = scores.draw;
+      setStatus("It's a draw!", 'draw');
+      gameOver = true;
+      return;
+    }
+
+    thinking = true;
+    document.getElementById('thinking').classList.add('active');
+
+    try {
+      const res = await fetch(`${API}/api/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board: [...board], difficulty })
+      });
+      const data = await res.json();
+      board = data.board;
+      renderBoard(data.winning_line || []);
+
+      if (data.winner) {
+        scores.O++;
+        document.getElementById('oScore').textContent = scores.O;
+        setStatus('AI wins this round! 🤖', 'o-turn');
+        gameOver = true;
+      } else if (data.draw) {
+        scores.draw++;
+        document.getElementById('drawScore').textContent = scores.draw;
+        setStatus("It's a draw!", 'draw');
+        gameOver = true;
+      } else {
+        setStatus('Your turn — play X', 'x-turn');
+        updateTurnIndicator();
+      }
+    } catch (e) {
+      setStatus('Connection error!', 'draw');
+    } finally {
+      thinking = false;
+      document.getElementById('thinking').classList.remove('active');
+    }
+  }
+
+  function checkLocalWinner(b) {
+    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (const line of lines) {
+      const [a, bv, c] = line;
+      if (b[a] && b[a] === b[bv] && b[a] === b[c]) return [b[a], line];
+    }
+    return [null, []];
+  }
+
+  function resetGame() {
+    board = Array(9).fill('');
+    gameOver = false;
+    thinking = false;
+    renderBoard();
+    setStatus('Your turn — play X', 'x-turn');
+    updateTurnIndicator();
+    document.getElementById('thinking').classList.remove('active');
+  }
+
+  function resetScores() {
+    scores = { X: 0, O: 0, draw: 0 };
+    document.getElementById('xScore').textContent = 0;
+    document.getElementById('oScore').textContent = 0;
+    document.getElementById('drawScore').textContent = 0;
+    resetGame();
+  }
+
+  updateTurnIndicator();
+</script>
+</body>
+</html>
